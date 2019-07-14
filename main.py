@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 
 bot = telebot.TeleBot(token)
 knownUsers = []
+product = {}
 @bot.message_handler(commands=['start'])
 def command_start(message):
     msg = bot.reply_to(message, 'سلام به کاوش سرام خوش آمدید')
@@ -20,7 +21,7 @@ def command_start(message):
 
 def main_menu(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, selective=True)
-    item_existance = types.KeyboardButton('استعلام موجودی')
+    item_existance = types.KeyboardButton('موجودی')
     item_sales_bascket = types.KeyboardButton('سبد خرید')
     co_worker = types.KeyboardButton('همکاران')
     markup.row(item_existance, item_sales_bascket, co_worker)
@@ -30,9 +31,94 @@ def main_menu(message):
 def main_menu_eval(message):
     if message.text == 'همکاران':
         co_worker_menu(message)
+    elif message.text == 'موجودی':
+        existance_item_menue_admin(message)
     else:
         bot.reply_to(message, 'گزینه دیگری انتخاب کنید')
         main_menu(message)
+
+def existance_item_menue_admin(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, selective=True)
+    item_existance = types.KeyboardButton('استعلام موجودی')
+    item_sales_bascket = types.KeyboardButton('افزودن کالای جدید')
+    markup.row(item_existance, item_sales_bascket)
+    message = bot.reply_to(message, 'لطفا گزینه مورد نظر را انتخاب کنید', reply_markup=markup)
+    bot.register_next_step_handler(message, existance_item_menue_admin_action)
+def existance_item_menue_admin_action(message):
+    if message.text == 'افزودن کالای جدید':
+        add_name(message)
+    else:
+        existance_item_menue_admin()
+def add_name(message):
+    message = bot.reply_to(message, 'نام کالا را وارد کنید')
+    bot.register_next_step_handler(message, add_name_action)
+def add_name_action(message):
+    product['name'] = message.text
+    add_size_menu(message)
+
+def add_size_menu(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, selective=True)
+    item_60_30 = types.KeyboardButton('60*30')
+    item_80_80 = types.KeyboardButton('80*80')
+    item_58_58 = types.KeyboardButton('58*58')
+    item_50_50 = types.KeyboardButton('50*50')
+    item_60_60 = types.KeyboardButton('60*60')
+    markup.row(item_60_30, item_80_80, item_58_58, item_50_50, item_60_60 )
+    message = bot.reply_to(message, 'سایز را وارد کنید', reply_markup=markup)
+    bot.register_next_step_handler(message, add_size_menu_action)
+def add_size_menu_action(message):
+    product['size'] = message.text
+    add_grade_menu(message)
+def add_grade_menu(message):
+    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, selective=True)
+    item_A = types.KeyboardButton('A')
+    item_B = types.KeyboardButton('B')
+    item_C = types.KeyboardButton('C')
+    item_1 = types.KeyboardButton('1')
+    item_2 = types.KeyboardButton('2')
+    item_3 = types.KeyboardButton('3')
+    markup.row(item_A, item_B, item_C, item_1, item_2, item_3)
+    message = bot.reply_to(message, 'گرید یا درجه را وارد کنید', reply_markup=markup)
+    bot.register_next_step_handler(message, add_grade_menu_action)
+def add_grade_menu_action(message):
+    product['grade'] = message.text
+    add_box_area_menu(message)
+def add_box_area_menu(message):
+    message = bot.reply_to(message, 'مساحت هر کارتن را وارد کنید')
+    bot.register_next_step_handler(message, add_box_area_menu_action)
+def add_box_area_menu_action(message):
+    product['box_area'] = message.text
+    add_in_box_count_menu(message)
+def add_in_box_count_menu(message):
+    message = bot.reply_to(message, 'تعداد برگ هر کارتن را وارد کنید')
+    bot.register_next_step_handler(message, add_in_box_count_menu_action)
+def add_in_box_count_menu_action(message):
+    product['count_in_box'] = message.text
+    add_box_count_menu(message)
+def add_box_count_menu(message):
+    message = bot.reply_to(message, 'تعداد کارتن را وارد کنید')
+    bot.register_next_step_handler(message, add_box_count_menu_action)
+def add_box_count_menu_action(message):
+    product['count_box'] = message.text
+    add_box_price_menu(message)
+def add_box_price_menu(message):
+    message = bot.reply_to(message, 'قیمت هر متر مربع(تومان) را وارد کنید')
+    bot.register_next_step_handler(message, add_box_price_menu_action)
+def add_box_price_menu_action(message):
+    product['price'] = message.text
+    try:
+        df = db_to_df('select * from products')
+    except:
+        df = pd.DataFrame(data=product, index=[0])
+        df_to_db(df, 'kavoshbot', 'authentication')
+    else:
+        if product['name'] not in df.name.values:
+            df = df.append(product, ignore_index=True)
+            df_to_db(df, 'kavoshbot', 'authentication')
+            bot.reply_to(message, 'کالا با موفقیت ثبت گردید')
+        else:
+            bot.reply_to(message, 'این کالا قبلا ذخیره شده است')
+    existance_item_menue_admin(message)
 def co_worker_menu(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, selective=True)
     item_present_co_worker = types.KeyboardButton('همکاران فعلی')
